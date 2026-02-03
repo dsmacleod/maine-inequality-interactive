@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maine Inequality Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --accent: #0e7490;
+      --accent-2: #eab308;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --line-town: #0e7490;
+      --line-maine: #d97706;
+      --grid: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: radial-gradient(1200px 600px at 20% -10%, #e0f2fe, transparent),
+                  radial-gradient(1200px 700px at 120% 10%, #fef9c3, transparent),
+                  var(--bg);
+    }
+
+    .wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 20px 16px 28px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      padding: 18px 18px 20px;
+      border: 1px solid #e5e7eb;
+    }
+
+    h1 {
+      font-family: "Fraunces", serif;
+      font-weight: 600;
+      font-size: 28px;
+      line-height: 1.1;
+      margin: 0 0 6px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 14px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .controls input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #cbd5f5;
+      font-size: 15px;
+      background: #f8fafc;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 8px 0 12px;
+    }
+
+    .stat {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #f8fafc;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      margin: 6px 0 4px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .note {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 320px !important;
+    }
+
+    @media (max-width: 640px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>How Inequality Has Changed in Your Maine Town</h1>
+      <div class="sub">Search a town to see the Gini index trend over time. Lower is more equal.</div>
+
+      <div class="controls">
+        <input id="townSearch" list="towns" placeholder="Start typing a Maine town..." />
+        <datalist id="towns"></datalist>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Latest Gini</div>
+          <div class="stat-value" id="latestVal">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Change Since 2010–2014</div>
+          <div class="stat-value" id="changeVal">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Town Selected</div>
+          <div class="stat-value" id="townVal">—</div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><span class="dot" style="background: var(--line-town)"></span>Town</span>
+        <span><span class="dot" style="background: var(--line-maine)"></span>Maine overall</span>
+      </div>
+
+      <canvas id="chart"></canvas>
+
+      <div class="note">
+        Source: U.S. Census ACS 5-year estimates (B19083). Each point represents a 5-year period (e.g., 2010–2014 = 2014 ACS 5-year). Small towns can have larger margins of error.
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const COUNTY_NAMES = {
+      "001": "Androscoggin",
+      "003": "Aroostook",
+      "005": "Cumberland",
+      "007": "Franklin",
+      "009": "Hancock",
+      "011": "Kennebec",
+      "013": "Knox",
+      "015": "Lincoln",
+      "017": "Oxford",
+      "019": "Penobscot",
+      "021": "Piscataquis",
+      "023": "Sagadahoc",
+      "025": "Somerset",
+      "027": "Waldo",
+      "029": "Washington",
+      "031": "York"
+    };
+
+    const state = {
+      data: null,
+      chart: null,
+      placeIndex: new Map()
+    };
+
+    function formatNumber(val) {
+      if (val === null || val === undefined) return "—";
+      return val.toFixed(3);
+    }
+
+    function formatChange(val) {
+      if (val === null || val === undefined) return "—";
+      const sign = val > 0 ? "+" : "";
+      return sign + val.toFixed(3);
+    }
+
+    function buildOptionLabel(place) {
+      const county = COUNTY_NAMES[place.county] || "";
+      return county ? `${place.display} — ${county} County` : place.display;
+    }
+
+    function setStats(place) {
+      document.getElementById("latestVal").textContent = formatNumber(place.latest);
+      document.getElementById("changeVal").textContent = formatChange(place.change);
+      document.getElementById("townVal").textContent = place.display || "—";
+    }
+
+    function updateChart(place) {
+      const labels = state.data.yearRanges;
+      const townSeries = place.series;
+      const maineSeries = state.data.maine.series;
+
+      state.chart.data.labels = labels;
+      state.chart.data.datasets[0].data = townSeries;
+      state.chart.data.datasets[1].data = maineSeries;
+      state.chart.update();
+      setStats(place);
+    }
+
+    function pickDefaultPlace() {
+      const match = state.data.places.find((p) => (p.display || "").toLowerCase() === "bangor");
+      return match || state.data.places[0];
+    }
+
+    function initChart() {
+      const ctx = document.getElementById("chart");
+      state.chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: state.data.yearRanges,
+          datasets: [
+            {
+              label: "Town",
+              data: [],
+              borderColor: getComputedStyle(document.documentElement).getPropertyValue("--line-town"),
+              backgroundColor: "transparent",
+              borderWidth: 3,
+              pointRadius: 2,
+              pointHoverRadius: 4,
+              tension: 0.3
+            },
+            {
+              label: "Maine overall",
+              data: [],
+              borderColor: getComputedStyle(document.documentElement).getPropertyValue("--line-maine"),
+              backgroundColor: "transparent",
+              borderWidth: 2,
+              pointRadius: 0,
+              borderDash: [6, 4],
+              tension: 0.2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: false,
+              grid: { color: "#e2e8f0" },
+              ticks: {
+                callback: (value) => value.toFixed(2)
+              }
+            },
+            x: {
+              grid: { display: false }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function loadData() {
+      const res = await fetch("./data/maine_gini.json");
+      state.data = await res.json();
+
+      const list = document.getElementById("towns");
+      state.data.places.forEach((place) => {
+        const label = buildOptionLabel(place);
+        const option = document.createElement("option");
+        option.value = label;
+        list.appendChild(option);
+        state.placeIndex.set(label.toLowerCase(), place);
+      });
+
+      initChart();
+      const defaultPlace = pickDefaultPlace();
+      updateChart(defaultPlace);
+      document.getElementById("townSearch").value = buildOptionLabel(defaultPlace);
+    }
+
+    document.getElementById("townSearch").addEventListener("input", (e) => {
+      const value = e.target.value.trim().toLowerCase();
+      if (!value) return;
+      const match = state.placeIndex.get(value);
+      if (match) {
+        updateChart(match);
+      }
+    });
+
+    loadData();
+  </script>
+</body>
+</html>
