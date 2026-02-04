@@ -2,4 +2,4 @@ This was vibe-coded 😎 with codex and based on Maine State Economist Amanda Re
 
 Currently the labeling is a little esoteric for most news consumers. The X-axis should be cleaned up, town names should be standardized to omit counties. 
 
-The data has not been checked for accuracy!
+The data has not been checked for accuracy and this should be considered a work in progress. 
