@@ -1,0 +1,1 @@
+This was vibe-coded 😎 with codex and based on Maine State Economist Amanda Rector's recent research on [income inequality]([url](https://mainestateeconomist207.github.io/Distribution-of-Personal-Income-in-Maine/personal-income-distribution-Maine-2025-part-1)) in Maine. 
