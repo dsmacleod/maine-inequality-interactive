@@ -156,7 +156,7 @@
           <div class="stat-value" id="latestVal">—</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Change Since 2010–2014</div>
+        <div class="stat-label">Change Since 2010–2014 Avg.</div>
           <div class="stat-value" id="changeVal">—</div>
         </div>
         <div class="stat">
@@ -173,32 +173,13 @@
       <canvas id="chart"></canvas>
 
       <div class="note">
-        Source: U.S. Census ACS 5-year estimates (B19083). Each point represents a 5-year period (e.g., 2010–2014 = 2014 ACS 5-year). Small towns can have larger margins of error.
+        Source: U.S. Census ACS 5-year estimates (B19083). The x-axis shows the end year of each 5-year average (e.g., 2014 represents 2010–2014). Small towns can have larger margins of error.
       </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
-    const COUNTY_NAMES = {
-      "001": "Androscoggin",
-      "003": "Aroostook",
-      "005": "Cumberland",
-      "007": "Franklin",
-      "009": "Hancock",
-      "011": "Kennebec",
-      "013": "Knox",
-      "015": "Lincoln",
-      "017": "Oxford",
-      "019": "Penobscot",
-      "021": "Piscataquis",
-      "023": "Sagadahoc",
-      "025": "Somerset",
-      "027": "Waldo",
-      "029": "Washington",
-      "031": "York"
-    };
-
     const state = {
       data: null,
       chart: null,
@@ -217,8 +198,7 @@
     }
 
     function buildOptionLabel(place) {
-      const county = COUNTY_NAMES[place.county] || "";
-      return county ? `${place.display} — ${county} County` : place.display;
+      return place.display;
     }
 
     function setStats(place) {
@@ -228,7 +208,7 @@
     }
 
     function updateChart(place) {
-      const labels = state.data.yearRanges;
+      const labels = state.data.years.map((y) => String(y));
       const townSeries = place.series;
       const maineSeries = state.data.maine.series;
 
@@ -285,13 +265,18 @@
               }
             },
             x: {
-              grid: { display: false }
+              grid: { display: false },
+              ticks: { maxRotation: 0, autoSkip: true }
             }
           },
           plugins: {
             legend: { display: false },
             tooltip: {
               callbacks: {
+                title: (items) => {
+                  const idx = items[0].dataIndex;
+                  return state.data.yearRanges[idx] || items[0].label;
+                },
                 label: (ctx) => `${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}`
               }
             }
